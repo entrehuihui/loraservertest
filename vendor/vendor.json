@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "9bHH6zs3XDxr9KOtBXxJxBKXPvg=",
+			"path": "../lorawan",
+			"revision": "f359b50e77d1f421e9201846f425986017ffd851",
+			"revisionTime": "2018-03-13T10:31:58Z"
+		}
+	],
+	"rootPath": "github.com/gq-tang/loraserver_test"
+}
