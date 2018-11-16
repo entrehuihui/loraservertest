@@ -27,63 +27,101 @@ func main() {
 		log.Fatal(" not have Application")
 	}
 
-	// //获取应用内设备列表
-	// devicesinfo := GetDevices(IDArray[0], "114")
-	// if len(devicesinfo) == 0 {
-	// 	return
-	// }
-	// fmt.Println(devicesinfo)
-	// //获取设备keys
-	// // GetDeviceKeys(devicesinfo[0].DevEUI)
-	// //获取设备Activation
-	// deviceActivation, err := GetDeviceActivation(devicesinfo[0].DevEUI)
+	//获取应用内设备列表
+	devicesinfos := GetDevices(IDArray[0], "")
+	if len(devicesinfos) == 0 {
+		return
+	}
+	fmt.Println(len(devicesinfos))
+
+	//给应用内所有应用发送信息
+	func() {
+		temperature := 38.0
+		humidity := 47.0
+		r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
+		r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
+		ra1 := 0.47
+		ra2 := 0.47
+		chanSendDataBatchInfo := make(chan SendDataBatchInfo, 100)
+		wg := sync.WaitGroup{}
+		go SendDataBatch("fffb02426f96c917", "127.0.0.1:1700", chanSendDataBatchInfo, &wg, 5432, 10)
+		wg.Add(1)
+		for _, devicesinfo := range devicesinfos[0:1] {
+			temperature = temperature - (r1.Float64()-ra1)/10
+			humidity = humidity - (r2.Float64()-ra2)/10
+			if temperature <= 0 {
+				ra1 += 0.01
+			} else if temperature >= 40 {
+				ra1 -= 0.01
+			}
+			if humidity <= 30 {
+				ra2 += 0.01
+			} else if humidity >= 80 {
+				ra2 -= 0.01
+			}
+			deviceInfo := make(map[string]interface{})
+			deviceInfo["temperature"] = strconv.FormatFloat(temperature, 'f', 2, 64)
+			deviceInfo["humidity"] = strconv.FormatFloat(humidity, 'f', 2, 64)
+			deviceInfo["time_device"] = time.Now().Unix()
+			b, err := json.Marshal(deviceInfo)
+			if err != nil {
+				continue
+			}
+			data := string(b)
+			fmt.Println(data)
+			deviceActivation, err := GetDeviceActivation(devicesinfo.DevEUI)
+			if err != nil {
+				continue
+			}
+			sendDataBatchInfo := SendDataBatchInfo{
+				Data:        data,
+				Devicesinfo: deviceActivation,
+			}
+			chanSendDataBatchInfo <- sendDataBatchInfo
+		}
+		close(chanSendDataBatchInfo)
+		wg.Wait()
+	}()
+
+	//获取设备keys
+	// GetDeviceKeys(devicesinfo[0].DevEUI)
+	//获取设备Activation
+	// deviceActivation, err := GetDeviceActivation(devicesinfos[0].DevEUI)
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
 	// fmt.Println("send data from :", devicesinfo[0].DevEUI)
 	// mainold(deviceActivation.DevAddr, deviceActivation.AppSKey, deviceActivation.NwkSEncKey)
 
-	//批量发送信息
-
-	// //创建设备
-	// PostDevice("116", "大大萨达萨达", "1111111111111116", IDArray[0], "ceec88af-86e9-4d3a-a372-693440be67d4", true)
-	// //创建设备keys
-	// deviceKeysResult := DeviceKeysResult{
-	// 	DevEUI: "1111111111111116",
-	// 	NwkKey: "43211111111111111111111111113330",
-	// 	AppKey: "43211111111111111111111111111110",
-	// }
-	// err := PostDeviceKeys(deviceKeysResult, "POST")
-	// fmt.Println(err)
-
 	// // 批量创建设备
-	// name := 0
-	// dev := "dev"
-	// eui := 1111111111111110
-	// createBatchDevicesInfos := make([]CreateBatchDevicesInfo, 0)
-	// for index := 0; index < 1000; {
-	// 	// err := PostDevice(strconv.Itoa(name), "大大萨达萨达", strconv.Itoa(eui), IDArray[0], "ceec88af-86e9-4d3a-a372-693440be67d4", true)
-	// 	createBatchDevicesInfo := CreateBatchDevicesInfo{
-	// 		PplicationsID: IDArray[0],
-	// 		DeviceName:    fmt.Sprintf("%s%d", dev, name),
-	// 		DeviceeEUI:    strconv.Itoa(eui),
-	// 		Synopsis:      "????",
-	// 		DeviceProfile: "ceec88af-86e9-4d3a-a372-693440be67d4",
-	// 		DisValidation: true,
+	// func() {
+	// 	name := 0
+	// 	dev := "dev"
+	// 	eui := 1111111111111110
+	// 	createBatchDevicesInfos := make([]CreateBatchDevicesInfo, 0)
+	// 	for index := 0; index < 1000; {
+	// 		// err := PostDevice(strconv.Itoa(name), "大大萨达萨达", strconv.Itoa(eui), IDArray[0], "ceec88af-86e9-4d3a-a372-693440be67d4", true)
+	// 		createBatchDevicesInfo := CreateBatchDevicesInfo{
+	// 			PplicationsID: IDArray[0],
+	// 			DeviceName:    fmt.Sprintf("%s%d", dev, name),
+	// 			DeviceeEUI:    strconv.Itoa(eui),
+	// 			Synopsis:      "????",
+	// 			DeviceProfile: "ceec88af-86e9-4d3a-a372-693440be67d4",
+	// 			DisValidation: true,
+	// 		}
+	// 		createBatchDevicesInfos = append(createBatchDevicesInfos, createBatchDevicesInfo)
+	// 		name++
+	// 		eui++
+	// 		index++
 	// 	}
-	// 	createBatchDevicesInfos = append(createBatchDevicesInfos, createBatchDevicesInfo)
-	// 	name++
-	// 	eui++
-	// 	index++
-	// }
-	// // CreateBatchDevices 批量创建设备
-	// CreateBatchDevices(10, createBatchDevicesInfos)
-	//激活应用内所有应用
-	ActivationDevices(IDArray[0], "fffb02426f96c917", "127.0.0.1:1700")
+	// 	// CreateBatchDevices 批量创建设备
+	// 	CreateBatchDevices(10, createBatchDevicesInfos)
+	// }()
+	// //激活应用内所有应用
+	// ActivationDevices(IDArray[0], "fffb02426f96c917", "127.0.0.1:1700")
 }
 
 func mainold(daddr, appkey, nkey string) {
-	fmt.Println(daddr, appkey, nkey)
 	rand.Seed(time.Now().UnixNano())
 	timeStart := time.Now().UnixNano() / 1e6
 	fmt.Println("start on:", timeStart)
@@ -149,7 +187,7 @@ func mainold(daddr, appkey, nkey string) {
 				}
 				data := string(b)
 				fmt.Println(data)
-				client.SendData(daddr, appkey, nkey, data, "string", count)
+				client.SendData(daddr, appkey, nkey, data, "string", 0)
 				// client.SendData("019e2550", "47766f6056ad38127a717d593d01c93c", "2076c1a6da6f1b332365510fad6d4271", data, "string", count) //---120 dve1
 				// client.SendData("01587d6f", "bf231e9619d9d2bbbefe4e53f4be23ea", "924100f401d983c170f2fc38bb4c56ba", data, "string", count) //120 --dev2
 				time.Sleep(time.Millisecond * 5000)

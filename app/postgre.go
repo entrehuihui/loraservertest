@@ -107,7 +107,7 @@ func ActivationDevices(ApplicationsID, Mac, Addr string) {
 	//异步创建keys
 	go func() {
 		for _, devicesinfo := range devicesinfos {
-			fmt.Println(devicesinfo.DevEUI)
+			// fmt.Println(devicesinfo.DevEUI)
 			//获取设备keys 如果已经设置则跳过设置
 			deviceKeysResult, err := GetDeviceKeys(devicesinfo.DevEUI)
 			if err != nil {
@@ -122,8 +122,6 @@ func ActivationDevices(ApplicationsID, Mac, Addr string) {
 			activationDeviceInfo := ActivationDeviceInfo{
 				DevEUI: devicesinfo.DevEUI,
 				NwkKey: deviceKeysResult.NwkKey,
-				Mac:    Mac,
-				Addr:   Addr,
 			}
 			chanActivationDeviceInfo <- activationDeviceInfo
 		}
@@ -136,19 +134,60 @@ func ActivationDevices(ApplicationsID, Mac, Addr string) {
 	for activationDeviceInfo := range chanActivationDeviceInfo {
 		activationDeviceInfos = append(activationDeviceInfos, activationDeviceInfo)
 		if rangActivationDeviceInfoNum%101 == 0 {
-			go func() {
+			go func(rangActivationDeviceInfoNum int) {
 				wg.Add(1)
-				SendActivationDevice(activationDeviceInfos[rangActivationDeviceInfoNum-101:rangActivationDeviceInfoNum], activationDevicePort)
+				SendActivationDeviceSameApplications(activationDeviceInfos[rangActivationDeviceInfoNum-101:rangActivationDeviceInfoNum], activationDevicePort, Mac, Addr)
 				wg.Done()
-			}()
+			}(rangActivationDeviceInfoNum)
 			activationDevicePort++
 		}
 		rangActivationDeviceInfoNum++
 	}
 	//管道被关闭, 激活剩余部分
-	SendActivationDevice(activationDeviceInfos[rangActivationDeviceInfoNum-rangActivationDeviceInfoNum%101:], activationDevicePort)
+	SendActivationDeviceSameApplications(activationDeviceInfos[rangActivationDeviceInfoNum-rangActivationDeviceInfoNum%101:], activationDevicePort, Mac, Addr)
 	//等待所有协程结束
 	wg.Wait()
+}
+
+//SendActivationDeviceSameApplications 同一网关批量激活
+//activationDeviceInfos 激活信息
+//startPort 发送端口
+func SendActivationDeviceSameApplications(activationDeviceInfos []ActivationDeviceInfo, startPort int, Mac, Addr string) []DeviceKeyInfo {
+	deviceKeyInfos := make([]DeviceKeyInfo, 0)
+	client, err := handlers.NewClient(fmt.Sprintf(":%d", startPort), Mac, Addr)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	dbns, err := sql.Open("postgres", "host=127.0.0.1 user=postgres password=loraserver_ns dbname=loraserver_ns sslmode=disable")
+	if err != nil {
+		log.Fatal("Open:", err)
+	}
+	defer dbns.Close()
+	for _, activationDeviceInfo := range activationDeviceInfos {
+		//发送激活请求
+		err = client.JoinRequest(activationDeviceInfo.DevEUI, activationDeviceInfo.NwkKey)
+		if err != nil {
+			fmt.Println("ActivationDevice fail:", activationDeviceInfo)
+		}
+		time.Sleep(time.Second * 1)
+		fmt.Println("get keys", activationDeviceInfo.DevEUI)
+		addr, nwkkey, err := GetDeviceActivationKey(dbns, activationDeviceInfo.DevEUI)
+		if err != nil {
+			fmt.Println("get device keys fail! DevEUI:", activationDeviceInfo.DevEUI)
+			continue
+		}
+		deviceKeyInfo := DeviceKeyInfo{
+			DevEUI:  activationDeviceInfo.DevEUI,
+			NwkKey:  nwkkey,
+			DevAddr: addr,
+		}
+		fmt.Println(addr, nwkkey)
+		//发送一条数据 正式激活
+		client.SendData(addr, nwkkey, nwkkey, "Activation", "string", 1)
+		deviceKeyInfos = append(deviceKeyInfos, deviceKeyInfo)
+	}
+	return deviceKeyInfos
 }
 
 //CreateBatchDevicesInfo 批量创建的设备信息

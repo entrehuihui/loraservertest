@@ -9,6 +9,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
+
+	"../handlers"
 )
 
 //JWT ..
@@ -159,7 +162,7 @@ func GetDevices(id string, search string) []DevicesResult {
 		fmt.Println(err)
 		return nil
 	}
-	// fmt.Println(responseMap)
+	fmt.Println(responseMap.TotalCount)
 	return responseMap.Rsesult
 }
 
@@ -242,7 +245,7 @@ func GetDeviceKeys(devEUI string) (DeviceKeysResult, error) {
 		return DeviceKeysResult{}, err
 	}
 	if responseMap.DeviceKeys.NwkKey == "" {
-		fmt.Println("get device key fail")
+		// fmt.Println("get device key fail")
 		return DeviceKeysResult{}, errors.New("get device key fail")
 	}
 	fmt.Println(responseMap.DeviceKeys)
@@ -316,6 +319,70 @@ func GetDeviceActivation(devEUI string) (DeviceActivationResult, error) {
 		fmt.Println("get device activation fail")
 		return responseMap.DeviceActivation, errors.New("get device activation fail")
 	}
-	fmt.Println(responseMap)
+	// fmt.Println(responseMap)
 	return responseMap.DeviceActivation, err
+}
+
+//SendDataBatchInfo ..
+type SendDataBatchInfo struct {
+	Data        string
+	Devicesinfo DeviceActivationResult
+}
+
+//SendDataBatch 批量发送信息
+//mac 发送网关
+//addr 网关地址
+// chanSendDataBatchInfo 信息管道
+// wg 等待锁
+// port 发送起始端口
+// goNum 协程数量--模拟同时发送信息设备数
+func SendDataBatch(mac, addr string, chanSendDataBatchInfo chan SendDataBatchInfo, wg *sync.WaitGroup, port, goNum int) {
+	// type ClientInfo struct {
+	// 	client     *handlers.GatewayClient
+	// 	chanClient chan int
+	// }
+	// clientInfos := make([]ClientInfo, 0)
+	// for i := 0; i < goNum; i++ {
+	// 	client, err := handlers.NewClient(laddr, mac, addr)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	clientInfo := ClientInfo{
+	// 		client:     client,
+	// 		chanClient: make(chan int, 1),
+	// 	}
+	// 	clientInfos = append(clientInfos, clientInfo)
+	// }
+	// num := 0
+	// for sendDataBatchInfo := range chanSendDataBatchInfo {
+	// 	select {
+	// 	case clientInfos[num].chanClient <- 1:
+	// 		go func(clientInfo ClientInfo) {
+	// 			clientInfo.client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+	// 			time.Sleep(time.Second * 1)
+	// 			<-clientInfo.chanClient
+	// 		}(clientInfos[num])
+	// 		num++
+	// 		if num == goNum {
+	// 			num = 0
+	// 		}
+	// 	default:
+	// 		num++
+	// 		if num == goNum {
+	// 			num = 0
+	// 		}
+	// 	}
+	// }
+	// for _, sclientInfo := range clientInfos {
+	// 	sclientInfo.chanClient <- 1
+	// }
+	// wg.Done()
+	client, err := handlers.NewClient(laddr, mac, addr)
+	if err != nil {
+		fmt.Println(err)
+	}
+	for sendDataBatchInfo := range chanSendDataBatchInfo {
+		client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+	}
+	wg.Done()
 }
