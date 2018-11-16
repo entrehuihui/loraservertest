@@ -14,6 +14,12 @@ import (
 //JWT ..
 var JWT string
 
+type PostErrorResponse struct {
+	Error string `json:"error"`
+	// Message string `json:"message"`
+	// Code    int    `json:"code"`
+}
+
 //GetClient 。。
 func GetClient() *http.Client {
 	tr := &http.Transport{
@@ -71,6 +77,9 @@ func Login(username, password string) {
 		log.Fatal(err)
 	}
 	fmt.Println(postBody["jwt"])
+	if postBody["jwt"] == "" {
+		log.Fatal("login fail")
+	}
 	JWT = postBody["jwt"]
 	// return postBody["jwt"]
 }
@@ -94,7 +103,7 @@ type ApplicationsResponse struct {
 
 //GetApplications 列表列出了可用的应用程序ID
 func GetApplications() []string {
-	body, err := GetBody("https://127.0.0.1:8080/api/applications?limit=999", "GET", nil)
+	body, err := GetBody("https://127.0.0.1:8080/api/applications?limit=9999", "GET", nil)
 	if err != nil || body == nil {
 		return nil
 	}
@@ -136,9 +145,10 @@ type DevicesResponse struct {
 
 //GetDevices 获取设备信息
 //id 要查询的应用id
+//search 查询相关的设备 全部设置传""
 //return []DevicesResult 返回查询到的应用设备全部信息
-func GetDevices(id string) []DevicesResult {
-	body, err := GetBody("https://127.0.0.1:8080/api/devices?limit=999&applicationID="+id, "GET", nil)
+func GetDevices(id string, search string) []DevicesResult {
+	body, err := GetBody("https://127.0.0.1:8080/api/devices?limit=9999&applicationID="+id+"&search="+search, "GET", nil)
 	if err != nil || body == nil {
 		return nil
 	}
@@ -149,7 +159,7 @@ func GetDevices(id string) []DevicesResult {
 		fmt.Println(err)
 		return nil
 	}
-	fmt.Println(responseMap)
+	// fmt.Println(responseMap)
 	return responseMap.Rsesult
 }
 
@@ -190,22 +200,25 @@ func PostDevice(name, description, devEUI, applicationID, deviceProfileID string
 	if err != nil || body == nil {
 		return err
 	}
-	fmt.Println(string(body))
-	var responseMap DevicesResponse
-	err = json.Unmarshal(body, &responseMap)
+	var postResponseMap PostErrorResponse
+	err = json.Unmarshal(body, &postResponseMap)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	fmt.Println(responseMap)
-	return nil
+	if postResponseMap.Error == "" {
+		fmt.Println("create device success!\n", "device name:", post.Device["name"], "\ndevice devEUI:", post.Device["devEUI"])
+		return nil
+	}
+	fmt.Println("create device fail:" + postResponseMap.Error)
+	return errors.New("create device fail:" + postResponseMap.Error)
 }
 
 //DeviceKeysResult ..keys(OTAA)信息
 type DeviceKeysResult struct {
-	// DevEUI string `json:"devEUI"`
+	DevEUI string `json:"devEUI"`
 	NwkKey string `json:"nwkKey"`
-	// AppKey string `json:"appKey"`
+	AppKey string `json:"appKey"`
 }
 
 // DeviceKeysResponse 。。keys(OTAA)主体
@@ -215,21 +228,57 @@ type DeviceKeysResponse struct {
 
 //GetDeviceKeys 获取设备keys(OTAA)
 //devEUI 设备devEUI
-//return string Application key
-func GetDeviceKeys(devEUI string) string {
+//return string Application key, if error return ""
+func GetDeviceKeys(devEUI string) (DeviceKeysResult, error) {
 	var responseMap DeviceKeysResponse
 	body, err := GetBody("https://127.0.0.1:8080/api/devices/"+devEUI+"/keys", "GET", nil)
 	if err != nil || body == nil {
-		return ""
+		return DeviceKeysResult{}, err
 	}
 
 	err = json.Unmarshal(body, &responseMap)
 	if err != nil {
 		fmt.Println(err)
-		return ""
+		return DeviceKeysResult{}, err
 	}
-	fmt.Println(responseMap)
-	return responseMap.DeviceKeys.NwkKey
+	if responseMap.DeviceKeys.NwkKey == "" {
+		fmt.Println("get device key fail")
+		return DeviceKeysResult{}, errors.New("get device key fail")
+	}
+	fmt.Println(responseMap.DeviceKeys)
+	return responseMap.DeviceKeys, nil
+}
+
+// //DeviceKeysinfo ..post信息
+// type DeviceKeysinfo struct {
+// 	DevEUI string `json:"devEUI"`
+// 	NwkKey string `json:"nwkKey"`
+// 	AppKey string `json:"appKey"`
+// }
+
+//PostDeviceKeys 设置设备keys(OTAA)
+//deviceKeys keys信息
+//medhod 请求方式 post创建 put修改
+func PostDeviceKeys(deviceKeys DeviceKeysResult, medhod string) error {
+	type PostDeviceKeys struct {
+		DeviceKeys DeviceKeysResult `json:"deviceKeys"`
+	}
+	postDeviceKeys := PostDeviceKeys{DeviceKeys: deviceKeys}
+	buf, err := json.Marshal(postDeviceKeys)
+	body, err := GetBody("https://127.0.0.1:8080/api/devices/"+deviceKeys.DevEUI+"/keys", medhod, buf)
+	if err != nil || body == nil {
+		return err
+	}
+	responseMap := PostErrorResponse{}
+	err = json.Unmarshal(body, &responseMap)
+	if err != nil {
+		return err
+	}
+	if responseMap.Error != "" {
+		return errors.New("create device keys fail:" + responseMap.Error)
+	}
+	fmt.Println("create keys success")
+	return nil
 }
 
 //DeviceActivationResult ..Activation信息
@@ -251,7 +300,7 @@ type DeviceActivationResponse struct {
 }
 
 //GetDeviceActivation 获取设备keys(OTAA)
-//devEUI 设备devEUI
+//devEUI 设备devEUI, if error return "",err
 func GetDeviceActivation(devEUI string) (DeviceActivationResult, error) {
 	var responseMap DeviceActivationResponse
 	body, err := GetBody("https://127.0.0.1:8080/api/devices/"+devEUI+"/activation", "GET", nil)
@@ -262,6 +311,10 @@ func GetDeviceActivation(devEUI string) (DeviceActivationResult, error) {
 	if err != nil {
 		fmt.Println(err)
 		return responseMap.DeviceActivation, err
+	}
+	if responseMap.DeviceActivation.DevAddr == "" {
+		fmt.Println("get device activation fail")
+		return responseMap.DeviceActivation, errors.New("get device activation fail")
 	}
 	fmt.Println(responseMap)
 	return responseMap.DeviceActivation, err

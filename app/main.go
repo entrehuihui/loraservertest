@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -17,26 +18,72 @@ const addr = "127.0.0.1:1700"
 const laddr = ":5453"
 
 func main() {
-	JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsb3JhLWFwcC1zZXJ2ZXIiLCJleHAiOjE1NDIxNzkxMjEsImlzcyI6ImxvcmEtYXBwLXNlcnZlciIsIm5iZiI6MTU0MjA5MjcyMSwic3ViIjoidXNlciIsInVzZXJuYW1lIjoiYWRtaW4ifQ.nHZZYdPuLFuW4ei7muQQFmVEE8LU-WXPRNbb-6rZZQg"
-	//获取JWT登陆信息
-	// Login("admin", "admin")
-	// if len(JWT) == 0 {
-	// 	log.Fatal("login fail")
-	// }
+	// JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsb3JhLWFwcC1zZXJ2ZXIiLCJleHAiOjE1NDIyNjg3MTcsImlzcyI6ImxvcmEtYXBwLXNlcnZlciIsIm5iZiI6MTU0MjE4MjMxNywic3ViIjoidXNlciIsInVzZXJuYW1lIjoiYWRtaW4ifQ.SfKocoilLvg1dzQXJpIOEzDy3DfFVTfqUaZ02SaeFws"
+	// //获取JWT登陆信息
+	Login("admin", "admin")
 	// 获取应用ID
-	// IDArray := GetApplications()
-	// if len(IDArray) == 0 {
-	// 	log.Fatal(" not have Application")
-	// }
-	//获取应用内设备列表
-	// GetDevices("3")
-	//获取设备keys
-	// GetDeviceKeys("24c5d9e63257f58c")
-	//获取设备Activation
-	// GetDeviceActivation("24c5d9e63257f58c")
+	IDArray := GetApplications()
+	if len(IDArray) == 0 {
+		log.Fatal(" not have Application")
+	}
 
-	PostDevice("114", "大大萨达萨达", "1111111111111114", "3", "ceec88af-86e9-4d3a-a372-693440be67d4", true)
-	return
+	// //获取应用内设备列表
+	// devicesinfo := GetDevices(IDArray[0], "114")
+	// if len(devicesinfo) == 0 {
+	// 	return
+	// }
+	// fmt.Println(devicesinfo)
+	// //获取设备keys
+	// // GetDeviceKeys(devicesinfo[0].DevEUI)
+	// //获取设备Activation
+	// deviceActivation, err := GetDeviceActivation(devicesinfo[0].DevEUI)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Println("send data from :", devicesinfo[0].DevEUI)
+	// mainold(deviceActivation.DevAddr, deviceActivation.AppSKey, deviceActivation.NwkSEncKey)
+
+	//批量发送信息
+
+	// //创建设备
+	// PostDevice("116", "大大萨达萨达", "1111111111111116", IDArray[0], "ceec88af-86e9-4d3a-a372-693440be67d4", true)
+	// //创建设备keys
+	// deviceKeysResult := DeviceKeysResult{
+	// 	DevEUI: "1111111111111116",
+	// 	NwkKey: "43211111111111111111111111113330",
+	// 	AppKey: "43211111111111111111111111111110",
+	// }
+	// err := PostDeviceKeys(deviceKeysResult, "POST")
+	// fmt.Println(err)
+
+	// // 批量创建设备
+	// name := 0
+	// dev := "dev"
+	// eui := 1111111111111110
+	// createBatchDevicesInfos := make([]CreateBatchDevicesInfo, 0)
+	// for index := 0; index < 1000; {
+	// 	// err := PostDevice(strconv.Itoa(name), "大大萨达萨达", strconv.Itoa(eui), IDArray[0], "ceec88af-86e9-4d3a-a372-693440be67d4", true)
+	// 	createBatchDevicesInfo := CreateBatchDevicesInfo{
+	// 		PplicationsID: IDArray[0],
+	// 		DeviceName:    fmt.Sprintf("%s%d", dev, name),
+	// 		DeviceeEUI:    strconv.Itoa(eui),
+	// 		Synopsis:      "????",
+	// 		DeviceProfile: "ceec88af-86e9-4d3a-a372-693440be67d4",
+	// 		DisValidation: true,
+	// 	}
+	// 	createBatchDevicesInfos = append(createBatchDevicesInfos, createBatchDevicesInfo)
+	// 	name++
+	// 	eui++
+	// 	index++
+	// }
+	// // CreateBatchDevices 批量创建设备
+	// CreateBatchDevices(10, createBatchDevicesInfos)
+	//激活应用内所有应用
+	ActivationDevices(IDArray[0], "fffb02426f96c917", "127.0.0.1:1700")
+}
+
+func mainold(daddr, appkey, nkey string) {
+	fmt.Println(daddr, appkey, nkey)
 	rand.Seed(time.Now().UnixNano())
 	timeStart := time.Now().UnixNano() / 1e6
 	fmt.Println("start on:", timeStart)
@@ -102,10 +149,7 @@ func main() {
 				}
 				data := string(b)
 				fmt.Println(data)
-				// client.SendData("01cb8a27", "e310aff65e7c9b2a01c4ffa3432e9896", "a781a5f436705dbcce9028925479c244", data, "string", count) //127--120
-				// client.SendData("003b914d", "d4a7105edc0c4ffd918f3d1139c76626", "f2479e86f91eb46debc0793f04855edf", data, "string", count) //127--119
-				// client.SendData("01f734a6", "c9790bbf6a4fd96a541914e32405d1f2", "8ee9c3dbdbbdc99f6bb18e01d5da78c5", data, "string", count) //127--111
-				client.SendData("01d35d38", "9fc2687ce9b3755ce09d514a7e1969fa", "34d7aa1cf1e9332243a40bce3c10a814", data, "string", count) //127--110
+				client.SendData(daddr, appkey, nkey, data, "string", count)
 				// client.SendData("019e2550", "47766f6056ad38127a717d593d01c93c", "2076c1a6da6f1b332365510fad6d4271", data, "string", count) //---120 dve1
 				// client.SendData("01587d6f", "bf231e9619d9d2bbbefe4e53f4be23ea", "924100f401d983c170f2fc38bb4c56ba", data, "string", count) //120 --dev2
 				time.Sleep(time.Millisecond * 5000)
