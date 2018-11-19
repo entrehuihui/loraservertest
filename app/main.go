@@ -22,9 +22,31 @@ func main() {
 	Login("admin", "admin")
 
 	//入网请求测试
-	// var Macs = []string{"fffb02426f96c807", "fffb02426f96c997", "fffb02426f96c987", "fffb02426f96c977", "fffb02426f96c967", "fffb02426f96c957", "fffb02426f96c947", "fffb02426f96c937", "fffb02426f96c927", "fffb02426f96c917"}
-	var Macs = []string{"fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917"}
-	TestAccessNetwork("testApp", "testDev", "127.0.0.1:1700", Macs, 100, 10)
+	func() {
+		type useTimeInfo struct {
+			useTime            int64
+			devNum, gatewayNum int
+		}
+		useTimes := make([]useTimeInfo, 0)
+		for times := 0; times < 10; times++ {
+			func() {
+				gatewayNum := 10
+				Macs := make([]string, 0)
+				j := gatewayNum + 10000
+				for i := 10000; i < j; i++ {
+					Macs = append(Macs, fmt.Sprintf("fffb02426f9%d", i))
+				}
+				useTime, devNum, gatewayNum := TestAccessNetwork("testApp", "testDev", "127.0.0.1:1700", Macs, 100, gatewayNum)
+				useTimes = append(useTimes, useTimeInfo{
+					useTime:    useTime,
+					devNum:     devNum,
+					gatewayNum: gatewayNum,
+				})
+			}()
+			time.Sleep(time.Second * 10)
+		}
+		fmt.Println(useTimes)
+	}()
 	return
 
 	// // 获取应用ID

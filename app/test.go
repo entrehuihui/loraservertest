@@ -12,7 +12,7 @@ import (
 
 //TestAccessNetwork 入网请求测试
 //
-func TestAccessNetwork(applicationName, devTestName, Addr string, Macs []string, devNum, gatewayNum int) {
+func TestAccessNetwork(applicationName, devTestName, Addr string, Macs []string, devNum, gatewayNum int) (int64, int, int) {
 	if len(Macs) < gatewayNum {
 		log.Fatal("测试失败, 传入网关数量小于需求网关数")
 	}
@@ -125,7 +125,7 @@ LOOP:
 	}()
 	time.Sleep(time.Second * 3)
 	fmt.Println("=----------------------------------------------------=")
-	fmt.Println("will activation device number:", len(activationDeviceInfos))
+	fmt.Println("will activation device number:", devNum)
 	fmt.Println(" use gatewayNum:", gatewayNum)
 	timeStart := time.Now().UnixNano() / 1e6
 	for _, activationDeviceInfo := range activationDeviceInfos {
@@ -151,11 +151,11 @@ LOOP:
 	}
 	timeEnd := time.Now().UnixNano() / 1e6
 	fmt.Println("=----------------------------------------------------=")
-	fmt.Println("will activation device number:", len(activationDeviceInfos))
+	fmt.Println("will activation device number:", devNum)
 	fmt.Println(" use gatewayNum:", gatewayNum)
 	fmt.Println("end time: ", timeEnd, "ms")
 	fmt.Println("wait 3S to check activation infomation")
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 15)
 	//查询数据库是否激活成功
 	dbns, err := sql.Open("postgres", "host=127.0.0.1 user=postgres password=loraserver_ns dbname=loraserver_ns sslmode=disable")
 	if err != nil {
@@ -173,10 +173,10 @@ LOOP:
 		clientChans[0].client.SendData(addr, nwkkey, nwkkey, "Activation", "string", 1)
 	}
 	fmt.Println("=----------------------------------------------------=")
-	fmt.Println("will activation device number:", len(activationDeviceInfos))
 	fmt.Println(" use gatewayNum:", gatewayNum)
 	fmt.Println("start time: ", timeStart, "ms")
 	fmt.Println("end time: ", timeEnd, "ms")
 	fmt.Println("use time : ", timeEnd-timeStart, "ms")
 	fmt.Println("activation Device Success Number :", activationDeviceSuccessNum)
+	return timeEnd - timeStart, activationDeviceSuccessNum, gatewayNum
 }
