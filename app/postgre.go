@@ -197,6 +197,8 @@ type CreateBatchDevicesInfo struct {
 }
 
 //CreateBatchDevices 批量创建设备
+//chanNum 协程数
+//createBatchDevicesInfos 设备信息
 func CreateBatchDevices(chanNum int, createBatchDevicesInfos []CreateBatchDevicesInfo) []CreateBatchDevicesInfo {
 	chanRES := make(chan int, chanNum)
 	wg := sync.WaitGroup{}
@@ -215,4 +217,70 @@ func CreateBatchDevices(chanNum int, createBatchDevicesInfos []CreateBatchDevice
 	}
 	wg.Wait()
 	return createBatchDevicesInfoError
+}
+
+//SendDataBatch 批量发送信息
+//mac 发送网关
+//addr 网关地址
+// chanSendDataBatchInfo 信息管道
+// wg 等待锁
+// port 发送起始端口
+// goNum 协程数量--模拟同时发送信息设备数
+func SendDataBatch(mac, addr string, chanSendDataBatchInfo chan SendDataBatchInfo, wg *sync.WaitGroup, port, goNum int) {
+	if goNum == 0 {
+		goNum = 1
+	}
+	type ClientInfo struct {
+		client     *handlers.GatewayClient
+		chanClient chan int
+	}
+	clientInfos := make([]ClientInfo, 0)
+	for i := 0; i < goNum; i++ {
+		client, err := handlers.NewClient(fmt.Sprintf(":%d", port), mac, addr)
+		if err != nil {
+			fmt.Println(err)
+			port++
+			continue
+		}
+		clientInfo := ClientInfo{
+			client:     client,
+			chanClient: make(chan int, 1),
+		}
+		clientInfos = append(clientInfos, clientInfo)
+		port++
+	}
+	num := 0
+	nums := 0
+	numss := 0
+	for sendDataBatchInfo := range chanSendDataBatchInfo {
+		nums++
+		select {
+		case clientInfos[num].chanClient <- 1:
+			numss++
+			fmt.Println("!!!", num)
+			go func(clientInfo ClientInfo) {
+				clientInfo.client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+				// time.Sleep(time.Second * 1)
+				<-clientInfo.chanClient
+			}(clientInfos[num])
+			num++
+			if num == goNum {
+				num = 0
+			}
+		}
+	}
+	for _, sclientInfo := range clientInfos {
+		sclientInfo.chanClient <- 1
+	}
+	time.Sleep(time.Second * 3)
+	fmt.Println("send data numbers : ", nums, "  numss : ", numss)
+	wg.Done()
+	// client, err := handlers.NewClient(fmt.Sprintf(":%d", mac, addr)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// for sendDataBatchInfo := range chanSendDataBatchInfo {
+	// 	client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+	// }
+	// wg.Done()
 }

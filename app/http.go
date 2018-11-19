@@ -9,16 +9,18 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
-
-	"../handlers"
 )
 
 //JWT ..
 var JWT string
 
+//URL lora服务器地址
+var URL = "https://127.0.0.1:8080"
+
+//PostErrorResponse ..
 type PostErrorResponse struct {
 	Error string `json:"error"`
+	ID    string `json:"id"`
 	// Message string `json:"message"`
 	// Code    int    `json:"code"`
 }
@@ -70,7 +72,7 @@ func Login(username, password string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	body, err := GetBody("https://127.0.0.1:8080/api/internal/login", "POST", post)
+	body, err := GetBody(URL+"/api/internal/login", "POST", post)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,8 +107,8 @@ type ApplicationsResponse struct {
 }
 
 //GetApplications 列表列出了可用的应用程序ID
-func GetApplications() []string {
-	body, err := GetBody("https://127.0.0.1:8080/api/applications?limit=9999", "GET", nil)
+func GetApplications() []ApplicationsResult {
+	body, err := GetBody(URL+"/api/applications?limit=9999", "GET", nil)
 	if err != nil || body == nil {
 		return nil
 	}
@@ -117,11 +119,7 @@ func GetApplications() []string {
 		fmt.Println(err)
 		return nil
 	}
-	var IDArray []string
-	for _, info := range responseMap.Rsesult {
-		IDArray = append(IDArray, info.ID)
-	}
-	return IDArray
+	return responseMap.Rsesult
 }
 
 //DevicesResult ..应用信息
@@ -151,7 +149,7 @@ type DevicesResponse struct {
 //search 查询相关的设备 全部设置传""
 //return []DevicesResult 返回查询到的应用设备全部信息
 func GetDevices(id string, search string) []DevicesResult {
-	body, err := GetBody("https://127.0.0.1:8080/api/devices?limit=9999&applicationID="+id+"&search="+search, "GET", nil)
+	body, err := GetBody(URL+"/api/devices?limit=9999&applicationID="+id+"&search="+search, "GET", nil)
 	if err != nil || body == nil {
 		return nil
 	}
@@ -199,7 +197,7 @@ func PostDevice(name, description, devEUI, applicationID, deviceProfileID string
 	if err != nil {
 		return errors.New("device info error")
 	}
-	body, err := GetBody("https://127.0.0.1:8080/api/devices", "POST", buf)
+	body, err := GetBody(URL+"/api/devices", "POST", buf)
 	if err != nil || body == nil {
 		return err
 	}
@@ -234,7 +232,7 @@ type DeviceKeysResponse struct {
 //return string Application key, if error return ""
 func GetDeviceKeys(devEUI string) (DeviceKeysResult, error) {
 	var responseMap DeviceKeysResponse
-	body, err := GetBody("https://127.0.0.1:8080/api/devices/"+devEUI+"/keys", "GET", nil)
+	body, err := GetBody(URL+"/api/devices/"+devEUI+"/keys", "GET", nil)
 	if err != nil || body == nil {
 		return DeviceKeysResult{}, err
 	}
@@ -268,7 +266,7 @@ func PostDeviceKeys(deviceKeys DeviceKeysResult, medhod string) error {
 	}
 	postDeviceKeys := PostDeviceKeys{DeviceKeys: deviceKeys}
 	buf, err := json.Marshal(postDeviceKeys)
-	body, err := GetBody("https://127.0.0.1:8080/api/devices/"+deviceKeys.DevEUI+"/keys", medhod, buf)
+	body, err := GetBody(URL+"/api/devices/"+deviceKeys.DevEUI+"/keys", medhod, buf)
 	if err != nil || body == nil {
 		return err
 	}
@@ -280,7 +278,7 @@ func PostDeviceKeys(deviceKeys DeviceKeysResult, medhod string) error {
 	if responseMap.Error != "" {
 		return errors.New("create device keys fail:" + responseMap.Error)
 	}
-	fmt.Println("create keys success")
+	// fmt.Println("create keys success")
 	return nil
 }
 
@@ -306,7 +304,7 @@ type DeviceActivationResponse struct {
 //devEUI 设备devEUI, if error return "",err
 func GetDeviceActivation(devEUI string) (DeviceActivationResult, error) {
 	var responseMap DeviceActivationResponse
-	body, err := GetBody("https://127.0.0.1:8080/api/devices/"+devEUI+"/activation", "GET", nil)
+	body, err := GetBody(URL+"/api/devices/"+devEUI+"/activation", "GET", nil)
 	if err != nil || body == nil {
 		return responseMap.DeviceActivation, errors.New("GetBody error")
 	}
@@ -329,60 +327,91 @@ type SendDataBatchInfo struct {
 	Devicesinfo DeviceActivationResult
 }
 
-//SendDataBatch 批量发送信息
-//mac 发送网关
-//addr 网关地址
-// chanSendDataBatchInfo 信息管道
-// wg 等待锁
-// port 发送起始端口
-// goNum 协程数量--模拟同时发送信息设备数
-func SendDataBatch(mac, addr string, chanSendDataBatchInfo chan SendDataBatchInfo, wg *sync.WaitGroup, port, goNum int) {
-	// type ClientInfo struct {
-	// 	client     *handlers.GatewayClient
-	// 	chanClient chan int
-	// }
-	// clientInfos := make([]ClientInfo, 0)
-	// for i := 0; i < goNum; i++ {
-	// 	client, err := handlers.NewClient(laddr, mac, addr)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// 	clientInfo := ClientInfo{
-	// 		client:     client,
-	// 		chanClient: make(chan int, 1),
-	// 	}
-	// 	clientInfos = append(clientInfos, clientInfo)
-	// }
-	// num := 0
-	// for sendDataBatchInfo := range chanSendDataBatchInfo {
-	// 	select {
-	// 	case clientInfos[num].chanClient <- 1:
-	// 		go func(clientInfo ClientInfo) {
-	// 			clientInfo.client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
-	// 			time.Sleep(time.Second * 1)
-	// 			<-clientInfo.chanClient
-	// 		}(clientInfos[num])
-	// 		num++
-	// 		if num == goNum {
-	// 			num = 0
-	// 		}
-	// 	default:
-	// 		num++
-	// 		if num == goNum {
-	// 			num = 0
-	// 		}
-	// 	}
-	// }
-	// for _, sclientInfo := range clientInfos {
-	// 	sclientInfo.chanClient <- 1
-	// }
-	// wg.Done()
-	client, err := handlers.NewClient(laddr, mac, addr)
+//ServiceProfilesResult ..配置信息
+type ServiceProfilesResult struct {
+	ID              string `json:"id"`   //配置id
+	Name            string `json:"name"` //配置名称
+	OrganizationID  string `json:"organizationID"`
+	NetworkServerID string `json:"networkServerID"`
+	CreatedAt       string `json:"createdAt"`
+	UpdatedAt       string `json:"updatedAt"`
+}
+
+// ServiceProfilesResponse 。。配置信息主体
+type ServiceProfilesResponse struct {
+	TotalCount string               `json:"totalCount"` //总计数
+	Rsesult    []ApplicationsResult `json:"result"`     //信息
+}
+
+//GetServiceProfiles 获取服务器配置列表
+func GetServiceProfiles() []ApplicationsResult {
+	body, err := GetBody(URL+"/api/service-profiles?limit=999", "GET", nil)
+	if err != nil || body == nil {
+		return nil
+	}
+	var responseMap ServiceProfilesResponse
+	err = json.Unmarshal(body, &responseMap)
 	if err != nil {
 		fmt.Println(err)
+		return nil
 	}
-	for sendDataBatchInfo := range chanSendDataBatchInfo {
-		client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+	return responseMap.Rsesult
+}
+
+//CreateApplication 创建应用
+func CreateApplication(applicationName string, applicationsResult ApplicationsResult) string {
+	type ApplicationsInfo struct {
+		Description      string `json:"description"`
+		Name             string `json:"name"`
+		OrganizationID   string `json:"organizationID"`
+		ServiceProfileID string `json:"serviceProfileID"`
 	}
-	wg.Done()
+	type ApplicationsInfoPost struct {
+		Application ApplicationsInfo `json:"application"`
+	}
+	applicationsInfoPost := ApplicationsInfoPost{}
+	applicationsInfoPost.Application = ApplicationsInfo{
+		Description:      applicationName,
+		Name:             applicationName,
+		OrganizationID:   applicationsResult.OrganizationID,
+		ServiceProfileID: applicationsResult.ID,
+	}
+	buf, err := json.Marshal(applicationsInfoPost)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	body, err := GetBody(URL+"/api/applications", "POST", buf)
+	if err != nil || body == nil {
+		fmt.Println(err, string(body))
+		return ""
+	}
+	var postResponseMap PostErrorResponse
+	err = json.Unmarshal(body, &postResponseMap)
+	if err != nil {
+		fmt.Println("创建测试应用失败!!! error:", err, "returnError", postResponseMap.Error)
+		return ""
+	}
+	if postResponseMap.Error != "" {
+		fmt.Println("创建测试应用失败!!! returnError", postResponseMap.Error)
+		return ""
+	}
+	return postResponseMap.ID
+}
+
+//DelApplication 删除应用
+func DelApplication(ID string) error {
+	body, err := GetBody(URL+"/api/applications/"+ID, "DELETE", nil)
+	if err != nil || body == nil {
+		return nil
+	}
+	var responseMap PostErrorResponse
+	err = json.Unmarshal(body, &responseMap)
+	if err != nil {
+		return err
+	}
+	if responseMap.Error != "" {
+		return errors.New(responseMap.Error)
+	}
+	return nil
 }

@@ -91,6 +91,7 @@ func (c *GatewayClient) Ping() {
 }
 
 func (c *GatewayClient) SendData(devAddr, askey, nskey, str string, dataType string, count uint32) error {
+	// return nil
 	var devaddr lorawan.DevAddr
 	err := devaddr.UnmarshalText([]byte(devAddr))
 	if err != nil {

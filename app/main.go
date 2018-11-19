@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -18,70 +17,81 @@ const addr = "127.0.0.1:1700"
 const laddr = ":5453"
 
 func main() {
-	// JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsb3JhLWFwcC1zZXJ2ZXIiLCJleHAiOjE1NDIyNjg3MTcsImlzcyI6ImxvcmEtYXBwLXNlcnZlciIsIm5iZiI6MTU0MjE4MjMxNywic3ViIjoidXNlciIsInVzZXJuYW1lIjoiYWRtaW4ifQ.SfKocoilLvg1dzQXJpIOEzDy3DfFVTfqUaZ02SaeFws"
-	// //获取JWT登陆信息
+	JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJsb3JhLWFwcC1zZXJ2ZXIiLCJleHAiOjE1NDIyNjg3MTcsImlzcyI6ImxvcmEtYXBwLXNlcnZlciIsIm5iZiI6MTU0MjE4MjMxNywic3ViIjoidXNlciIsInVzZXJuYW1lIjoiYWRtaW4ifQ.SfKocoilLvg1dzQXJpIOEzDy3DfFVTfqUaZ02SaeFws"
+	//获取JWT登陆信息
 	Login("admin", "admin")
-	// 获取应用ID
-	IDArray := GetApplications()
-	if len(IDArray) == 0 {
-		log.Fatal(" not have Application")
-	}
 
-	//获取应用内设备列表
-	devicesinfos := GetDevices(IDArray[0], "")
-	if len(devicesinfos) == 0 {
-		return
-	}
-	fmt.Println(len(devicesinfos))
+	//入网请求测试
+	// var Macs = []string{"fffb02426f96c807", "fffb02426f96c997", "fffb02426f96c987", "fffb02426f96c977", "fffb02426f96c967", "fffb02426f96c957", "fffb02426f96c947", "fffb02426f96c937", "fffb02426f96c927", "fffb02426f96c917"}
+	var Macs = []string{"fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917", "fffb02426f96c917"}
+	TestAccessNetwork("testApp", "testDev", "127.0.0.1:1700", Macs, 100, 10)
+	return
 
-	//给应用内所有应用发送信息
-	func() {
-		temperature := 38.0
-		humidity := 47.0
-		r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
-		r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
-		ra1 := 0.47
-		ra2 := 0.47
-		chanSendDataBatchInfo := make(chan SendDataBatchInfo, 100)
-		wg := sync.WaitGroup{}
-		go SendDataBatch("fffb02426f96c917", "127.0.0.1:1700", chanSendDataBatchInfo, &wg, 5432, 10)
-		wg.Add(1)
-		for _, devicesinfo := range devicesinfos[0:1] {
-			temperature = temperature - (r1.Float64()-ra1)/10
-			humidity = humidity - (r2.Float64()-ra2)/10
-			if temperature <= 0 {
-				ra1 += 0.01
-			} else if temperature >= 40 {
-				ra1 -= 0.01
-			}
-			if humidity <= 30 {
-				ra2 += 0.01
-			} else if humidity >= 80 {
-				ra2 -= 0.01
-			}
-			deviceInfo := make(map[string]interface{})
-			deviceInfo["temperature"] = strconv.FormatFloat(temperature, 'f', 2, 64)
-			deviceInfo["humidity"] = strconv.FormatFloat(humidity, 'f', 2, 64)
-			deviceInfo["time_device"] = time.Now().Unix()
-			b, err := json.Marshal(deviceInfo)
-			if err != nil {
-				continue
-			}
-			data := string(b)
-			fmt.Println(data)
-			deviceActivation, err := GetDeviceActivation(devicesinfo.DevEUI)
-			if err != nil {
-				continue
-			}
-			sendDataBatchInfo := SendDataBatchInfo{
-				Data:        data,
-				Devicesinfo: deviceActivation,
-			}
-			chanSendDataBatchInfo <- sendDataBatchInfo
-		}
-		close(chanSendDataBatchInfo)
-		wg.Wait()
-	}()
+	// // 获取应用ID
+	// applicationsResult := GetApplications()
+	// if len(applicationsResult) == 0 {
+	// 	log.Fatal(" not have Application")
+	// }
+
+	// //获取应用内设备列表
+	// devicesinfos := GetDevices(applicationsResult[0].ID, "")
+	// if len(devicesinfos) == 0 {
+	// 	return
+	// }
+	// fmt.Println(len(devicesinfos))
+
+	// //给应用内所有应用发送信息
+	// func() {
+	// 	temperature := 38.0
+	// 	humidity := 47.0
+	// 	r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
+	// 	r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
+	// 	ra1 := 0.47
+	// 	ra2 := 0.47
+	// 	chanSendDataBatchInfo := make(chan SendDataBatchInfo, 100)
+	// 	wg := sync.WaitGroup{}
+	// 	go SendDataBatch("fffb02426f96c917", "127.0.0.1:1700", chanSendDataBatchInfo, &wg, 4432, 10)
+	// 	wg.Add(1)
+	// 	for i := 0; i < 10; i++ {
+	// 		for _, devicesinfo := range devicesinfos[0:1] {
+	// 			temperature = temperature - (r1.Float64()-ra1)/10
+	// 			humidity = humidity - (r2.Float64()-ra2)/10
+	// 			if temperature <= 0 {
+	// 				ra1 += 0.01
+	// 			} else if temperature >= 40 {
+	// 				ra1 -= 0.01
+	// 			}
+	// 			if humidity <= 30 {
+	// 				ra2 += 0.01
+	// 			} else if humidity >= 80 {
+	// 				ra2 -= 0.01
+	// 			}
+	// 			deviceInfo := make(map[string]interface{})
+	// 			deviceInfo["temperature"] = strconv.FormatFloat(temperature, 'f', 2, 64)
+	// 			deviceInfo["humidity"] = strconv.FormatFloat(humidity, 'f', 2, 64)
+	// 			deviceInfo["time_device"] = time.Now().Unix()
+	// 			deviceInfo["times"] = i
+	// 			b, err := json.Marshal(deviceInfo)
+	// 			if err != nil {
+	// 				continue
+	// 			}
+	// 			data := string(b)
+	// 			// fmt.Println(data)
+	// 			deviceActivation, err := GetDeviceActivation(devicesinfo.DevEUI)
+	// 			if err != nil {
+	// 				continue
+	// 			}
+	// 			sendDataBatchInfo := SendDataBatchInfo{
+	// 				Data:        data,
+	// 				Devicesinfo: deviceActivation,
+	// 			}
+	// 			chanSendDataBatchInfo <- sendDataBatchInfo
+	// 		}
+	// 		// time.Sleep(time.Millisecond * 100)
+	// 	}
+	// 	close(chanSendDataBatchInfo)
+	// 	wg.Wait()
+	// }()
 
 	//获取设备keys
 	// GetDeviceKeys(devicesinfo[0].DevEUI)
@@ -118,7 +128,7 @@ func main() {
 	// 	CreateBatchDevices(10, createBatchDevicesInfos)
 	// }()
 	// //激活应用内所有应用
-	// ActivationDevices(IDArray[0], "fffb02426f96c917", "127.0.0.1:1700")
+	// ActivationDevices(applicationsResult[0].ID, "fffb02426f96c917", "127.0.0.1:1700")
 }
 
 func mainold(daddr, appkey, nkey string) {
