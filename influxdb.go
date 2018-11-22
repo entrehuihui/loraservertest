@@ -80,15 +80,15 @@
 
 // }
 
-package main
+// package main
 
-import (
-	"fmt"
-)
+// import (
+// 	"fmt"
+// )
 
-func main() {
-	b := [8]byte{36, 197, 217, 230, 50, 87, 245, 140}
-	// b, _ := hex.DecodeString("24 c5 d9 e6 32 57 f5 8c")
-	fmt.Println(b)
+// func main() {
+// 	b := [8]byte{36, 197, 217, 230, 50, 87, 245, 140}
+// 	// b, _ := hex.DecodeString("24 c5 d9 e6 32 57 f5 8c")
+// 	fmt.Println(b)
 
-}
+// }

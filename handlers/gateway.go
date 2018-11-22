@@ -196,6 +196,113 @@ func (c *GatewayClient) SendData(devAddr, askey, nskey, str string, dataType str
 	return err
 }
 
+//RetSendData ..
+func (c *GatewayClient) RetSendData(devAddr, askey, nskey, str string, dataType string, count uint32) ([]byte, error) {
+	// return nil
+	var devaddr lorawan.DevAddr
+	err := devaddr.UnmarshalText([]byte(devAddr))
+	if err != nil {
+		return nil, errors.Wrap(err, "Device address error")
+	}
+	var asKey lorawan.AES128Key
+	var nsKey lorawan.AES128Key
+	err = asKey.UnmarshalText([]byte(askey))
+	if err != nil {
+		return nil, errors.Wrap(err, "application session key format error")
+	}
+	err = nsKey.UnmarshalText([]byte(nskey))
+	if err != nil {
+		return nil, errors.Wrap(err, "network session key format error")
+	}
+
+	var b []byte
+	if strings.ToLower(dataType) == "hex" {
+		b, err = hex.DecodeString(str)
+		if err != nil {
+			return nil, err
+		}
+	} else if strings.ToLower(dataType) == "string" {
+		b = []byte(str)
+	} else {
+		return nil, errors.New("data_type invalid,valid(hex/string)")
+	}
+
+	data, err := encode(devaddr, asKey, nsKey, b, count)
+	if err != nil {
+		return nil, errors.Wrap(err, "encode phypayload error")
+	}
+	now := time.Now()
+	var compactTime gateway.CompactTime
+	compactTime = gateway.CompactTime(now)
+	bs64Data := base64.StdEncoding.EncodeToString(data)
+	// md5str := md5.New()
+	// md5str.Write([]byte("044816c60202feff"))
+	// md5str.Write([]byte(fmt.Sprintf("%d", now.Unix())))
+	// md5str.Write([]byte("KCogiaertpoqij4nr"))
+	// md5res := hex.EncodeToString(md5str.Sum(nil))
+	rand.Seed(time.Now().Unix())
+	pushdata := gateway.PushDataPacket{
+		ProtocolVersion: 1,
+		RandomToken:     1,
+		GatewayMAC:      c.Mac,
+		Payload: gateway.PushDataPayload{
+			RXPK: []gateway.RXPK{
+				gateway.RXPK{
+					Tmst: uint32(now.Unix()),
+					Time: &compactTime,
+					Chan: 1,
+					RFCh: 1,
+					Freq: 470.5,
+					Stat: 1,
+					Modu: "LORA",
+					DatR: gateway.DatR{
+						LoRa: "SF10BW125",
+					},
+					CodR: "4/5",
+					LSNR: -18,
+					RSSI: -5,
+					Size: uint16(len(data)),
+					Data: bs64Data,
+					RSig: []gateway.RSig{
+						gateway.RSig{
+							Ant:   1,
+							Chan:  3,
+							LSNR:  45.0,
+							RSSIC: 20,
+						},
+						gateway.RSig{
+							Ant:   2,
+							Chan:  5,
+							LSNR:  45.0,
+							RSSIC: 20,
+						},
+					},
+				},
+			},
+			// Stat: &gateway.Stat{RXFW: 3, RXOK: 3, RXNb: 3, Time: gateway.ExpandedTime(now),
+			// 	TXNb:  30,
+			// 	CPU:   uint32(rand.Intn(100)),
+			// 	Memf:  uint32(rand.Intn(100)),
+			// 	Memd:  uint32(rand.Intn(100)),
+			// 	Discf: uint32(rand.Intn(100)),
+			// 	Discd: uint32(rand.Intn(100)),
+			// 	MD5:   md5res,
+			// },
+		},
+	}
+
+	wData, err := pushdata.MarshalBinary()
+	// fmt.Println(wData)
+	if err != nil {
+		return nil, errors.Wrap(err, "pushdata marshal error")
+	}
+	// send(wData)
+	// fmt.Println("jsonUP:", string(wData[12:]))
+	// _, err = c.Conn.Write(wData)
+
+	return wData, err
+}
+
 func EncodeCommand() ([]byte, error) {
 	var chmask lorawan.ChMask
 	chmask.UnmarshalBinary([]byte{0xc0, 0x00})
@@ -307,7 +414,9 @@ func (c *GatewayClient) JoinRequest(deveui, appKey string) error {
 
 	fmt.Println(string(wData[:]))
 	_, err = c.Conn.Write(wData)
-
+	readdata := make([]byte, 10000)
+	i, _ := c.Conn.Read(readdata)
+	fmt.Println(string(readdata[:i]))
 	return err
 }
 

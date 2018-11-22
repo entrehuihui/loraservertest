@@ -100,17 +100,19 @@ func ActivationDevices(ApplicationsID, Mac, Addr string) {
 	//批量激活
 	activationDeviceInfos := make([]ActivationDeviceInfo, 0)
 	//获取应用内设备列表
-	devicesinfos := GetDevices(ApplicationsID, "")
+	devicesinfos := GetDevices(ApplicationsID, "", 9999)
 	// fmt.Println(devicesinfos)
 	activationDeviceInfoNum := 10
 	chanActivationDeviceInfo := make(chan ActivationDeviceInfo, activationDeviceInfoNum)
 	//异步创建keys
 	go func() {
+		numfail := 0
 		for _, devicesinfo := range devicesinfos {
 			// fmt.Println(devicesinfo.DevEUI)
 			//获取设备keys 如果已经设置则跳过设置
 			deviceKeysResult, err := GetDeviceKeys(devicesinfo.DevEUI)
 			if err != nil {
+				numfail++
 				deviceKeysResult = DeviceKeysResult{
 					DevEUI: devicesinfo.DevEUI,
 					NwkKey: "11111111111111111111111111111111",
@@ -231,8 +233,8 @@ func SendDataBatch(mac, addr string, chanSendDataBatchInfo chan SendDataBatchInf
 		goNum = 1
 	}
 	type ClientInfo struct {
-		client     *handlers.GatewayClient
-		chanClient chan int
+		client *handlers.GatewayClient
+		rxchan chan int
 	}
 	clientInfos := make([]ClientInfo, 0)
 	for i := 0; i < goNum; i++ {
@@ -243,8 +245,8 @@ func SendDataBatch(mac, addr string, chanSendDataBatchInfo chan SendDataBatchInf
 			continue
 		}
 		clientInfo := ClientInfo{
-			client:     client,
-			chanClient: make(chan int, 1),
+			client: client,
+			rxchan: make(chan int, 1),
 		}
 		clientInfos = append(clientInfos, clientInfo)
 		port++
@@ -254,33 +256,49 @@ func SendDataBatch(mac, addr string, chanSendDataBatchInfo chan SendDataBatchInf
 	numss := 0
 	for sendDataBatchInfo := range chanSendDataBatchInfo {
 		nums++
-		select {
-		case clientInfos[num].chanClient <- 1:
-			numss++
-			fmt.Println("!!!", num)
-			go func(clientInfo ClientInfo) {
-				clientInfo.client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
-				// time.Sleep(time.Second * 1)
-				<-clientInfo.chanClient
-			}(clientInfos[num])
-			num++
-			if num == goNum {
-				num = 0
+		for {
+			select {
+			case clientInfos[num].rxchan <- 1:
+				numss++
+				fmt.Println("!!!", num)
+				go func(clientInfo ClientInfo) {
+					clientInfo.client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+					// time.Sleep(time.Second * 1)
+					<-clientInfo.rxchan
+				}(clientInfos[num])
+				num++
+				if num == goNum {
+					num = 0
+				}
+			default:
+				num++
+				if num == goNum {
+					num = 0
+				}
 			}
 		}
 	}
 	for _, sclientInfo := range clientInfos {
-		sclientInfo.chanClient <- 1
+		sclientInfo.rxchan <- 1
 	}
 	time.Sleep(time.Second * 3)
 	fmt.Println("send data numbers : ", nums, "  numss : ", numss)
 	wg.Done()
-	// client, err := handlers.NewClient(fmt.Sprintf(":%d", mac, addr)
-	// if err != nil {
-	// 	fmt.Println(err)
+	// num := len(chanSendDataBatchInfo) / goNum
+	// for i, clientChan := range clientInfos {
+	// 	clientChan.rxchan <- 1
+	// 	go func(newClientChan ClientInfo, iIdex int) {
+	// 		fmt.Println(iIdex)
+	// 		wg.Wait()
+	// 		for _, activationDeviceInfo := range chanSendDataBatchInfo[iIdex*num : (iIdex+1)*num] {
+	// 			newClientChan.client.SendData(activationDeviceInfo.Devicesinfo.DevAddr, activationDeviceInfo.Devicesinfo.AppSKey, activationDeviceInfo.Devicesinfo.NwkSEncKey, activationDeviceInfo.Data, "string", 0)
+	// 			// time.Sleep(time.Millisecond * 100)
+	// 		}
+	// 		<-newClientChan.rxchan
+	// 	}(clientChan, i)
 	// }
-	// for sendDataBatchInfo := range chanSendDataBatchInfo {
-	// 	client.SendData(sendDataBatchInfo.Devicesinfo.DevAddr, sendDataBatchInfo.Devicesinfo.AppSKey, sendDataBatchInfo.Devicesinfo.NwkSEncKey, sendDataBatchInfo.Data, "string", 0)
+	// //等待所有协程结束
+	// for _, clientChan := range clientInfos {
+	// 	clientChan.rxchan <- 1
 	// }
-	// wg.Done()
 }

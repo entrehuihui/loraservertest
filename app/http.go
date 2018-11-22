@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -148,8 +149,8 @@ type DevicesResponse struct {
 //id 要查询的应用id
 //search 查询相关的设备 全部设置传""
 //return []DevicesResult 返回查询到的应用设备全部信息
-func GetDevices(id string, search string) []DevicesResult {
-	body, err := GetBody(URL+"/api/devices?limit=9999&applicationID="+id+"&search="+search, "GET", nil)
+func GetDevices(id string, search string, num int) []DevicesResult {
+	body, err := GetBody(URL+"/api/devices?limit="+strconv.Itoa(num)+"&applicationID="+id+"&search="+search, "GET", nil)
 	if err != nil || body == nil {
 		return nil
 	}
@@ -194,6 +195,7 @@ func PostDevice(name, description, devEUI, applicationID, deviceProfileID string
 	post.Device["deviceProfileID"] = deviceProfileID
 	post.Device["skipFCntCheck"] = skipFCntCheck
 	buf, err := json.Marshal(post)
+	// fmt.Println(string(buf))
 	if err != nil {
 		return errors.New("device info error")
 	}
@@ -211,7 +213,7 @@ func PostDevice(name, description, devEUI, applicationID, deviceProfileID string
 		fmt.Println("create device success!\n", "device name:", post.Device["name"], "\ndevice devEUI:", post.Device["devEUI"])
 		return nil
 	}
-	fmt.Println("create device fail:" + postResponseMap.Error)
+	fmt.Println("create device fail:", postResponseMap.Error)
 	return errors.New("create device fail:" + postResponseMap.Error)
 }
 
@@ -284,7 +286,7 @@ func PostDeviceKeys(deviceKeys DeviceKeysResult, medhod string) error {
 
 //DeviceActivationResult ..Activation信息
 type DeviceActivationResult struct {
-	// DevEUI      string `json:"devEUI"`
+	DevEUI     string `json:"devEUI"`
 	DevAddr    string `json:"devAddr"`
 	AppSKey    string `json:"appSKey"`
 	NwkSEncKey string `json:"nwkSEncKey"`
@@ -389,11 +391,11 @@ func CreateApplication(applicationName string, applicationsResult ApplicationsRe
 	var postResponseMap PostErrorResponse
 	err = json.Unmarshal(body, &postResponseMap)
 	if err != nil {
-		fmt.Println("创建测试应用失败!!! error:", err, "returnError", postResponseMap.Error)
+		fmt.Println("创建应用失败!!! error:", err, "returnError", postResponseMap.Error)
 		return ""
 	}
 	if postResponseMap.Error != "" {
-		fmt.Println("创建测试应用失败!!! returnError", postResponseMap.Error)
+		fmt.Println("创建应用失败!!! returnError", postResponseMap.Error)
 		return ""
 	}
 	return postResponseMap.ID
