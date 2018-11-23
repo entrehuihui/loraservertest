@@ -9,7 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
 )
 
 func main() {
@@ -17,12 +17,18 @@ func main() {
 	if datarx == nil {
 		log.Fatal("文件有误")
 	}
-	gates = 1
-	// num = 40
-	for index := 0; index < gates; index++ {
-		rx(datarx[index*num : (index+1)*num])
-		time.Sleep(time.Millisecond * 10)
+	gates = 20
+	num = 50
+	wg := sync.WaitGroup{}
+	for i := 0; i < gates; i++ {
+		wg.Add(1)
+		go func(index int) {
+			rx(datarx[index*num : (index+1)*num])
+			// time.Sleep(time.Millisecond * 10)
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
 }
 
 func rx(chanData []string) {
@@ -52,7 +58,7 @@ func rx(chanData []string) {
 }
 
 func rxdata() (int, int, []string) {
-	fileName := "rxdata_10_10.txt"
+	fileName := "rxdata_1_1000.txt"
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0666)
 	if err != nil {
 		fmt.Println("Open file error!", err)

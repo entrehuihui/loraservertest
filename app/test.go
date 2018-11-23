@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -220,26 +219,31 @@ func SendTADA(applicationsID string, gatewayNum, deviceNum int) {
 	if len(devicesinfos) < deviceNum {
 		log.Fatal("测试失败,应用内设备不足")
 	}
-	temperature := 38.0
-	humidity := 47.0
-	r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
-	r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
-	ra1 := 0.47
-	ra2 := 0.47
+	// temperature := 38.0
+	// humidity := 47.0
+	// r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
+	// r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
+	// ra1 := 0.47
+	// ra2 := 0.47
+	temperature := 0.0
+	humidity := 0.0
 	sendDataBatchInfos := make([]SendDataBatchInfo, 0)
 	for _, devicesinfo := range devicesinfos[:deviceNum] {
-		temperature = temperature - (r1.Float64()-ra1)/10
-		humidity = humidity - (r2.Float64()-ra2)/10
-		if temperature <= 0 {
-			ra1 += 0.01
-		} else if temperature >= 40 {
-			ra1 -= 0.01
-		}
-		if humidity <= 30 {
-			ra2 += 0.01
-		} else if humidity >= 80 {
-			ra2 -= 0.01
-		}
+		// temperature = temperature - (r1.Float64()-ra1)/10
+		// humidity = humidity - (r2.Float64()-ra2)/10
+		// if temperature <= 0 {
+		// 	ra1 += 0.01
+		// } else if temperature >= 40 {
+		// 	ra1 -= 0.01
+		// }
+		// if humidity <= 30 {
+		// 	ra2 += 0.01
+		// } else if humidity >= 80 {
+		// 	ra2 -= 0.01
+		// }
+		temperature = temperature + 1
+		humidity = humidity + 1
+		fmt.Println(temperature, humidity)
 		deviceInfo := make(map[string]interface{})
 		deviceInfo["temperature"] = strconv.FormatFloat(temperature, 'f', 2, 64)
 		deviceInfo["humidity"] = strconv.FormatFloat(humidity, 'f', 2, 64)
