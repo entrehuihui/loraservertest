@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(" not have Application")
 	}
 	//发送数据测试
-	SendTADA(applicationsResult[0].ID, 1, 1)
+	SendTADA(applicationsResult[0].ID, 1, 2000)
 
 	//TestAccess 入网请求测试 网关数,设备数
 	// TestAccess(10,100)

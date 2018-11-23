@@ -10,16 +10,30 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
+var fileName = "../rxdata_20_50.txt"
+var chanRX = make(chan int, 1000)
+var wgTime = sync.WaitGroup{}
+var endTime, startTime int64
+var gates, num int
+
+var udpchan = make(chan int, 20)
+
 func main() {
+	go mqttserver()
 	gates, num, datarx := rxdata()
 	if datarx == nil {
 		log.Fatal("文件有误")
 	}
-	gates = 20
-	num = 50
+	// fmt.Println(len(datarx[0]))
+	// fmt.Println(datarx[0])
+	// return
+	// gates = 1
+	// num = 1
 	wg := sync.WaitGroup{}
+	wgTime.Add(1)
 	for i := 0; i < gates; i++ {
 		wg.Add(1)
 		go func(index int) {
@@ -28,9 +42,37 @@ func main() {
 			wg.Done()
 		}(i)
 	}
+	startTime = time.Now().UnixNano() / 1e6
+	wgTime.Done()
 	wg.Wait()
+	// endTime = time.Now().UnixNano() / 1e6
+	// fmt.Printf("send data number : %d\nsend success number :%d\nsend data start time : %d(ms)\nsend data end time : %d(ms)\nAll use time:%d(ms)", gates*num, onMessageReceivedNum, startTime, endTime, endTime-startTime)
+	func() {
+		for {
+			var buffer [512]byte
+			_, err := os.Stdin.Read(buffer[:])
+			if err != nil {
+				fmt.Println("read error:", err)
+			}
+			a := strconv.FormatFloat(float64(onMessageReceivedNum)/float64(endTime-startTime)*1000.00, 'f', 2, 64)
+			fmt.Printf("send data number : %d\nsend success number :%d\nsend data start time : %d(ms)\nsend data end time : %d(ms)\nAll use time: %d (ms)\n AVG(S)= %s\n", gates*num, onMessageReceivedNum, startTime, endTime, endTime-startTime, a)
+			os.Exit(1)
+		}
+	}()
 }
 
+func stdin() {
+	for {
+		var buffer [512]byte
+		_, err := os.Stdin.Read(buffer[:])
+		if err != nil {
+			fmt.Println("read error:", err)
+		}
+		fmt.Println(gates, num)
+		fmt.Printf("send data number : %d\nsend success number :%d\nsend data start time : %d(ms)\nsend data end time : %d(ms)\nAll use time:%d(ms)", gates*num, onMessageReceivedNum, startTime, endTime, endTime-startTime)
+		os.Exit(1)
+	}
+}
 func rx(chanData []string) {
 	num11 := 0
 	conn, err := net.Dial("udp", "127.0.0.1:1700")
@@ -38,6 +80,8 @@ func rx(chanData []string) {
 		log.Fatal(err)
 	}
 	defer conn.Close()
+	wgTime.Wait()
+	data1 := make([]byte, 512)
 	for _, data := range chanData {
 		// fmt.Println(string(data))
 		_, err = conn.Write([]byte(data))
@@ -45,20 +89,18 @@ func rx(chanData []string) {
 			fmt.Println(err)
 			continue
 		}
-		data := make([]byte, 10000)
-		_, err := conn.Read(data)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		// fmt.Println(data[:i])
+		conn.Read(data1)
+		// _, err := conn.Read(data)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	continue
+		// }
 		num11++
 	}
 	fmt.Println(num11)
 }
 
 func rxdata() (int, int, []string) {
-	fileName := "rxdata_1_1000.txt"
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0666)
 	if err != nil {
 		fmt.Println("Open file error!", err)
