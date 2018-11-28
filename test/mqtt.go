@@ -33,16 +33,16 @@ func onMessageReceived(client MQTT.Client, message MQTT.Message) {
 	// fmt.Printf("Received message on topic: %s\nMessage: %s\n", message.Topic(), message.Payload())
 	// onMessageReceivedNum++
 	// fmt.Println("完成数量: ", onMessageReceivedNum)
-	// endTime = time.Now().UnixNano() / 1e6
+	endTime = time.Now().UnixNano() / 1e6
 	chanRX <- 1
 }
 
 func countNum() {
 	for {
+		<-chanGo
 		<-chanRX
 		onMessageReceivedNum++
 		fmt.Println("完成数量: ", onMessageReceivedNum)
-		endTime = time.Now().UnixNano() / 1e6
 	}
 }
 

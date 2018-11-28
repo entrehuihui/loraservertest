@@ -13,13 +13,12 @@ import (
 	"time"
 )
 
-var fileName = "../rxdata_20_50.txt"
+var fileName = "../rxdata_1_1.txt"
 var chanRX = make(chan int, 1000)
 var wgTime = sync.WaitGroup{}
 var endTime, startTime int64
 var gates, num int
-
-var udpchan = make(chan int, 20)
+var chanGo = make(chan int, 50)
 
 func main() {
 	go mqttserver()
@@ -95,6 +94,7 @@ func rx(chanData []string) {
 		// 	fmt.Println(err)
 		// 	continue
 		// }
+		chanGo <- 1
 		num11++
 	}
 	fmt.Println(num11)
