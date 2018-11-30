@@ -27,16 +27,16 @@ type humiture struct {
 }
 
 func main() {
-	tdata, err := hex.DecodeString("ff02051d01045c00e62002370149014c0149014c0151014d014f0153015801540159015c015f01620160015d015e015c016101640165016701650161015f0162f1016403153cf33df23ef53ff1404142f14344f14546f1474849041c3435f136383a3bf13d3e3d3e3d3e3d3e3f3e3d3f4140424445f14647050300ffa8ff00")
+	tdata, err := hex.DecodeString("ff02056401043b9aca000209014afffffffffffff903083cfffffffffffff9040832fffffffffffff9050300ffa8ff00")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(tdata)
+	// fmt.Println(tdata)
 	hums, err := decodeHumitures(tdata)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(hums[0])
+	fmt.Println(len(hums))
 }
 
 func unmarshalAlarm(alarm byte) alarmInfo {
@@ -192,7 +192,7 @@ func decodeHumitures(data []byte) ([]humiture, error) {
 				resultTime = append(resultTime, startTime)
 				startTime = startTime.Add(duration)
 			}
-			fmt.Println(_upTime)
+			// fmt.Println(_upTime)
 			//取下一个分包序号
 			start = end
 			end += 1
@@ -357,7 +357,7 @@ func decodeHumitures(data []byte) ([]humiture, error) {
 		dataCount = len(resultTime)
 	}
 	if dataCount > len(resultAlarm) {
-		dataCount = len(resultAlarm)
+		// dataCount = len(resultAlarm)
 	}
 	for i := 0; i < dataCount; i++ {
 		result := humiture{
@@ -365,7 +365,7 @@ func decodeHumitures(data []byte) ([]humiture, error) {
 			hum:     resultHum[i],
 			elec:    resultElec[i],
 			up_date: resultTime[i],
-			alarm:   resultAlarm[i],
+			// alarm:   resultAlarm[i],
 		}
 		results = append(results, result)
 	}

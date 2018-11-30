@@ -51,21 +51,24 @@ func main() {
 				temperature := 330
 				humidity := 60
 				elec := 50
-				r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
-				r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
+				// r1 := rand.New(rand.NewSource(time.Now().UnixNano() + 3))
+				// r2 := rand.New(rand.NewSource(time.Now().UnixNano() + 5))
 				ra1 := 5
 				ra2 := 1
 				ra3 := 2
-				sendTimes := 200 //发送频率
+				sendTimes := 250 //发送频率
 				for {
 					temps := make([]uint16, 0)
 					humis := make([]uint16, 0)
 					elecs := make([]uint16, 0)
 					var count uint32 = 1
 					for i := 0; i < sendTimes; i++ {
-						temperature = temperature - (r1.Intn(10) - ra1)
-						humidity = humidity - (r2.Intn(2) - ra2)
-						elec = elec - (r2.Intn(4) - ra3)
+						// temperature = temperature - (r1.Intn(10) - ra1)
+						// humidity = humidity - (r2.Intn(2) - ra2)
+						// elec = elec - (r2.Intn(4) - ra3)
+						temperature = temperature
+						humidity = humidity
+						elec = elec
 						if temperature <= 10 {
 							ra1++
 						} else if temperature >= 400 {
@@ -121,20 +124,15 @@ func main() {
 	wg.Wait()
 }
 func get(t, h, e []uint16) string {
-	//ff020558 01045be3da80 02050113fffff803040 030fff7 0404002ffff7050300ffa8ff00
-	//ff020418 01045bfdef5b 02050113fffff803040 030fff7 0404002ffff7
 	buf := []byte{0xff, 0x02, 0x05, (uint8)(len(t))}
 	b := make([]byte, 4)
-	// binary.BigEndian.PutUint32(b, (uint32)(time.Now().Unix()))
-	binary.BigEndian.PutUint32(b, (uint32)(1000000000))
+	binary.BigEndian.PutUint32(b, (uint32)(time.Now().Unix()))
+
 	b = append([]byte{1, 4}, b...)
-	// t := []uint16{275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275}
 	temp := encryption(2, t)
 	b = append(b, temp...)
-	// h := []uint16{48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48}
 	humit := encryption1(3, h)
 	b = append(b, humit...)
-	// e := []uint16{47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47}
 	elec := encryption1(4, e)
 	b = append(b, elec...)
 	// buf = append(buf, uint8(len(b)))
