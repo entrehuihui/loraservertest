@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -46,7 +47,6 @@ func main() {
 			},
 		}
 		for _, a0 := range a {
-			fmt.Println(1)
 			go func(aa A) {
 				temperature := 330
 				humidity := 60
@@ -56,7 +56,7 @@ func main() {
 				ra1 := 5
 				ra2 := 1
 				ra3 := 2
-				sendTimes := 1 //发送频率
+				sendTimes := 200 //发送频率
 				for {
 					temps := make([]uint16, 0)
 					humis := make([]uint16, 0)
@@ -76,9 +76,9 @@ func main() {
 						} else if humidity >= 90 {
 							ra2--
 						}
-						if humidity <= 10 {
+						if elec <= 10 {
 							ra3++
-						} else if humidity >= 120 {
+						} else if elec >= 120 {
 							ra3--
 						}
 						temps = append(temps, (uint16)(temperature))
@@ -87,15 +87,17 @@ func main() {
 					}
 					fmt.Println(temps, humis, elecs)
 					data := get(temps, humis, elecs)
+					fmt.Println(data)
 					client.SendData(aa.addr, aa.as, aa.ns, data, "string", count)
-					// client.SendData("00b26c1d", "e9d2b9af47631ca45ad5abfd55245bb4", "3befba8d46b5234b2dd2d573bd23c43a", data, "string", count) //---120 dve1
-					// client.SendData("01587d6f", "bf231e9619d9d2bbbefe4e53f4be23ea", "924100f401d983c170f2fc38bb4c56ba", data, "string", count) //120 --dev2
-					// client.SendData("01587d6f", "bf231e9619d9d2bbbefe4e53f4be23ea", "924100f401d983c170f2fc38bb4c56ba", data, "string", count) //120 --dev2
-					time.Sleep(time.Minute * time.Duration(sendTimes))
+					// client.SendData(aa.addr, aa.as, aa.ns, "1", "string", count)
+					// time.Sleep(time.Minute * time.Duration(sendTimes))
+					time.Sleep(time.Second * 2)
+					os.Exit(1)
 					count++
 				}
 			}(a0)
 			time.Sleep(time.Second * 1)
+			break
 		}
 
 		wg.Add(1)
@@ -121,9 +123,10 @@ func main() {
 func get(t, h, e []uint16) string {
 	//ff020558 01045be3da80 02050113fffff803040 030fff7 0404002ffff7050300ffa8ff00
 	//ff020418 01045bfdef5b 02050113fffff803040 030fff7 0404002ffff7
-	buf := []byte{0xff, 0x02, 0x05, 29}
+	buf := []byte{0xff, 0x02, 0x05, (uint8)(len(t))}
 	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, (uint32)(time.Now().Unix()))
+	// binary.BigEndian.PutUint32(b, (uint32)(time.Now().Unix()))
+	binary.BigEndian.PutUint32(b, (uint32)(1000000000))
 	b = append([]byte{1, 4}, b...)
 	// t := []uint16{275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275, 275}
 	temp := encryption(2, t)

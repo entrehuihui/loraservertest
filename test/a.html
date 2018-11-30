@@ -1,0 +1,144 @@
+<script>
+    function Decode(fPort, bytes) {
+        var str1 = ""
+        for (var i = 0; i < bytes.length; i++) {
+            str1 += String.fromCharCode(bytes[i]);
+        }
+        var str = str1
+        str = "ff02051d01043b9aca000276014d014f014cf201490147f1014b014d014f01540156015901560159015d015a015701540155f10157015c015f015d0160f10164f101650168016a01670169016c016b0167f1016601630161f101600165016901660162016501680167016c016df10172f2016e0171017301720173017601740177017a017b017f0183018401820181018601840187018901860189018b0190018d019101940190018f018c018d018b0184017df10176017201700169016701660164015c0157015601570156014f014e0146013e0137013001290122f10120011af1011501160113010c0106f1010100fc00f500ee00ec00ed00e900e800e000e100da00d500d400ce00c800c700c400c300c200ba00b600b100b200b000ab00a9f100a700a600a400a300a4009c00950090008c00880081f1008000780070006a006800690066005e005700520053004c0046003f003d003600330034f1002ff30027002000190012000d00090008000500030006000a000c001000160019001cf103be3c3d3ef23ff140414243f14445f146f147f148f249f14af14b4cf64df24ef14f5051f1525354f155f3565758f1595af159585756545352504f4d4b494746454442403f3e3d3b3a38363432312f2d2b292725242322211f1d1cf11d1f2124272a2c2e303235383a3c3e40424446484a4c4e5154575a5b5c5b5957555452504e4d4c4b4a49474645444342403f3e3c3b3a3937363533312f2e2d2b2a2826242221201f1e1df11e202326282b2d303235383a3d3f414345484b4e505255575a04b63231f2302ff1303133323334f135f236f23534f1333234f1353433f2343637f1393b3d3f403f404140424143454443f5424345474847464847f24847f1464544f146f14746484746f1484746f14546484a4b4a4c4b4a49f14bf14af14c4e4f50f152f25453545355f254565557595859f15b5cf15df15e5ff1616264f36665f16769686a6c6b6c6b6df26cf26e7072f17473f172f17170f3727170f27274757475f17675f177f179f1777673f1716f6e6c6b69686764050300ffa8ff00";
+        var len = str.length
+        //分包数
+        var dataNum = parseInt(str.substr(4, 2), 16);
+        //数据长度
+        var dataLen = parseInt(str.substr(6, 2), 16);
+        if (dataLen == 0) {
+            return
+        }
+        var ti = 0;
+        var num = parseInt(str.substr(8, 2), 16);
+        var start = 10;
+        var temp = new Array;
+        var humi = new Array;
+        var elec = new Array;
+        for (; ;) {
+            switch (num) {
+                case 1:
+                    var l1 = parseInt(str.substr(start, 2), 16);
+                    if (l1 + start > len) {
+                        return;
+                    }
+                    start += 2;
+                    ti = parseInt(str.substr(start, 8), 16);
+                    start += 8;
+                    num = parseInt(str.substr(start, 2), 16);
+                    start += 2;
+                    break;
+                case 2:
+                    var l2 = parseInt(str.substr(start, 2), 16) * 2;
+                    if (l2 + start > len) {
+                        return;
+                    }
+                    start += 2;
+                    var ii2 = start + l2;
+                    for (; start < ii2;) {
+                        if (parseInt(str.substr(start, 1), 16) >= 10) {
+                            start++;
+                            if (temp.length == 0) {
+                                return;
+                            }
+                            var temp1 = temp[temp.length - 1];
+                            for (var i = 0; i < parseInt(str.substr(start, 1), 16); i++) {
+                                temp.push(temp1);
+                            }
+                            start++;
+                        } else {
+                            temp.push(parseInt(str.substr(start, 4), 16) / 10);
+                            start += 4;
+                        }
+                    }
+                    num = parseInt(str.substr(start, 2), 16);
+                    start += 2;
+                    // console.log("temp", num, start);
+                    break;
+                case 3:
+                    var l3 = parseInt(str.substr(start, 2), 16) * 2;
+                    if (l3 + start > len) {
+                        return;
+                    }
+                    start += 2;
+                    var ii3 = start + l3;
+                    for (; start < ii3;) {
+                        if (parseInt(str.substr(start, 1), 16) >= 10) {
+                            start++;
+                            if (humi.length == 0) {
+                                return;
+                            }
+                            var humi1 = humi[humi.length - 1];
+                            for (var i = 0; i < parseInt(str.substr(start, 1), 16); i++) {
+                                humi.push(humi1);
+                            }
+                            start++;
+                        } else {
+                            humi.push(parseInt(str.substr(start, 2), 16));
+                            start += 2;
+                        }
+                    }
+                    num = parseInt(str.substr(start, 2), 16);
+                    start += 2
+                    // console.log(num, humi);
+                    break;
+                case 4:
+                    var l4 = parseInt(str.substr(start, 2), 16) * 2;
+                    if (l4 + start > len) {
+                        return;
+                    }
+                    start += 2;
+                    var ii4 = start + l4;
+                    for (; start < ii4;) {
+                        if (parseInt(str.substr(start, 1), 16) >= 10) {
+                            start++;
+                            if (elec.length == 0) {
+                                return;
+                            }
+                            var elec1 = elec[elec.length - 1];
+                            for (var i = 0; i < parseInt(str.substr(start, 1), 16); i++) {
+                                elec.push(elec1);
+                            }
+                            start++;
+                        } else {
+                            elec.push(parseInt(str.substr(start, 2), 16));
+                            start += 2;
+                        }
+                    }
+                    num = parseInt(str.substr(start, 2), 16);
+                    start += 2
+                    // console.log(num, elec);
+                    break;
+                case 5:
+                    num = 6;
+                    break;
+                default:
+                    break;
+            }
+            if (num > 5) {
+                break;
+            }
+        }
+        var alen = temp.length > humi.length ? humi.length : temp.length;
+        alen = alen > elec.length ? elec.length : alen;
+        var maxiiot = new Array;
+        for (var i = 0; i < alen; i++) {
+            maxiiot.push({
+                Temperature: temp[i],
+                Humidity: humi[i],
+                Electricity: elec[i],
+                time: ti
+            })
+            ti += 1
+        }
+        return { maxiiot: maxiiot }
+    }
+    var a = Decode("1", [102, 102, 48, 50, 48, 53, 49, 100, 48, 49, 48, 52, 53, 99, 48, 48, 101, 97, 48, 55, 48, 50, 51, 55, 48, 49, 52, 97, 48, 49, 52, 100, 48, 49, 53, 48, 48, 49, 52, 101, 48, 49, 52, 97, 48, 49, 52, 54, 48, 49, 52, 56, 48, 49, 52, 57, 48, 49, 52, 53, 48, 49, 52, 54, 48, 49, 52, 98, 48, 49, 53, 48, 48, 49, 52, 102, 48, 49, 52, 98, 48, 49, 52, 102, 48, 49, 53, 49, 48, 49, 52, 102, 48, 49, 52, 99, 48, 49, 52, 98, 102, 49, 48, 49, 52, 57, 48, 49, 52, 55, 48, 49, 52, 98, 48, 49, 52, 99, 48, 49, 52, 102, 48, 49, 52, 101, 48, 49, 53, 48, 48, 49, 52, 101, 48, 51, 49, 56, 51, 100, 102, 49, 51, 101, 51, 102, 52, 48, 52, 49, 102, 49, 52, 50, 52, 51, 52, 52, 102, 50, 52, 53, 102, 49, 52, 54, 102, 49, 52, 55, 52, 56, 102, 50, 52, 57, 102, 50, 52, 97, 102, 50, 52, 98, 52, 99, 48, 52, 49, 97, 51, 50, 51, 51, 51, 53, 51, 55, 51, 57, 51, 97, 51, 98, 102, 49, 51, 99, 51, 100, 102, 49, 51, 102, 51, 101, 52, 48, 102, 49, 52, 50, 102, 51, 52, 52, 52, 53, 52, 52, 52, 54, 102, 49, 52, 53, 52, 52, 102, 49, 52, 51, 48, 53, 48, 51, 48, 48, 102, 102, 97, 56, 102, 102, 48, 48])
+    document.write(a + '<br />');
+    document.write(a.maxiiot.length + '<br />');
+</script>
