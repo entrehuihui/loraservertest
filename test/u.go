@@ -27,7 +27,7 @@ type humiture struct {
 }
 
 func main() {
-	tdata, err := hex.DecodeString("ff02056401043b9aca000209014afffffffffffff903083cfffffffffffff9040832fffffffffffff9050300ffa8ff00")
+	tdata, err := hex.DecodeString("ff02050101045c04f21102020000030140040141050108ff")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(len(hums))
+	fmt.Println(hums, len(hums))
 }
 
 func unmarshalAlarm(alarm byte) alarmInfo {
